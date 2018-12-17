@@ -40,7 +40,25 @@ namespace Marten.Util
             // Default Npgsql mapping is 'numeric' but we are using 'decimal'
             PgTypes[typeof(decimal)] = "decimal";
             // Default Npgsql mappings is 'timestamp' but we are using 'timestamp without time zone'
-            PgTypes[typeof (DateTime)] = "timestamp without time zone";
+            PgTypes[typeof(DateTime)] = "timestamp without time zone";
+        }
+
+        public static void RegisterMapping<T>(string pgTypeName, NpgsqlDbType? npgsqlDBType = null)
+        {
+            RegisterMapping(typeof(T), pgTypeName, npgsqlDBType);
+        }
+
+        public static void RegisterMapping(Type type, string pgTypeName, NpgsqlDbType? npgsqlDBType = null)
+        {
+            if (PgTypes.ContainsKey(type))
+                PgTypes[type] = pgTypeName;
+            else
+                PgTypes.Add(type, pgTypeName);
+
+            if (TypeToNpgsqlDbType.ContainsKey(type))
+                TypeToNpgsqlDbType[type] = npgsqlDBType;
+            else
+                TypeToNpgsqlDbType.Add(type, npgsqlDBType);
         }
 
         public static string ConvertSynonyms(string type)
@@ -205,15 +223,6 @@ namespace Marten.Util
 
             // Treat "unknown" PgTypes as jsonb (this way null checks of arbitary depth won't fail on cast).
             return "CAST({0} as {1})".ToFormat(locator, GetPgType(memberType, enumStyle));
-        }
-
-        public static bool IsDate(this object value)
-        {
-            if (value == null) return false;
-
-            var type = value.GetType();
-
-            return type == typeof(DateTime) || type == typeof(DateTime?);
         }
     }
 }
