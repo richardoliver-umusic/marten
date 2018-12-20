@@ -171,5 +171,28 @@ namespace Marten.Testing.Bugs
                     .ShouldHaveTheSameElementsAs(1);
             }
         }
+
+        [Fact]
+        public void when_bulk_inserting_and_field_is_null_due_to_nesting()
+        {
+            StoreOptions(_ => _.Schema.For<Target>().Duplicate(t => t.Inner.Number));
+
+            theStore.BulkInsertDocuments(new[]
+            {
+                new Target
+                {
+                    Number = 1,
+                    Inner = null
+                }
+            });
+
+            using (var session = theStore.OpenSession())
+            {
+                session.Query<Target>().Where(x => x.Number == 1)
+                    .ToArray()
+                    .Select(x => x.Number)
+                    .ShouldHaveTheSameElementsAs(1);
+            }
+        }
     }
 }

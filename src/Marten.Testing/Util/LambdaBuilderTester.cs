@@ -87,6 +87,23 @@ namespace Marten.Testing.Util
             getter(target).ShouldBe(target.Inner.Number);
         }
 
+        [Fact]
+        public void can_build_getter_for_null_deep_expression()
+        {
+            Expression<Func<Target, int>> expression = t => t.Inner.Number;
+
+            var visitor = new FindMembers();
+            visitor.Visit(expression);
+
+            var members = visitor.Members.ToArray();
+
+            var getter = LambdaBuilder.Getter<Target, int>(EnumStorage.AsInteger, members);
+
+            var target = Target.Random(false);
+
+            getter(target).ShouldBe(target.Inner.Number);
+        }
+
         [Theory]
         [InlineData(EnumStorage.AsInteger)]
         [InlineData(EnumStorage.AsString)]
