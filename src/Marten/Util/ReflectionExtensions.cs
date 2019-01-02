@@ -40,12 +40,17 @@ namespace Marten.Util
 
         public static Type GetMemberType(this MemberInfo member)
         {
+            return GetMemberType(member, true);
+        }
+
+        public static Type GetMemberType(this MemberInfo member, bool unWrapNullable)
+        {
             Type rawType = null;
 
             if (member is FieldInfo) rawType = member.As<FieldInfo>().FieldType;
             if (member is PropertyInfo) rawType = member.As<PropertyInfo>().PropertyType;
 
-            return rawType.IsNullable() ? rawType.GetInnerTypeFromNullable() : rawType;
+            return rawType.IsNullable() && unWrapNullable ? rawType.GetInnerTypeFromNullable() : rawType;
         }
 
         public static string GetPrettyName(this Type t)
@@ -95,6 +100,11 @@ namespace Marten.Util
             return instance.GetType().Namespace == null;
         }
 
+        public static bool IsEnumOrNullableEnum(this Type type)
+        {
+            return (type.IsNullable() ? type.GetInnerTypeFromNullable() : type)
+                .IsEnum;
+        }
 
         /// <summary>
         ///     Derives the full type name *as it would appear in C# code*

@@ -100,23 +100,47 @@ namespace Marten.Util
 
         public static Expression ToExpression(EnumStorage enumStorage, MemberInfo[] members, ParameterExpression target)
         {
-            var accessor = members.Aggregate((Expression) target,
-                (acc, member) => Expression.PropertyOrField(acc, member.Name));
-
-            var lastMemberType = members.Last().GetMemberType();
-            if (members.Last().GetMemberType().GetTypeInfo().IsEnum)
+            Expression NullCheckExpression(Expression expression)
             {
-                if (enumStorage == EnumStorage.AsString)
-                {
-                    return Expression.Call(_getEnumStringValue, Expression.Constant(lastMemberType), Expression.Convert(accessor, typeof(object)));
-                }
-                else
-                {
-                    return Expression.Call(_getEnumIntValue, Expression.Convert(accessor, typeof(object)));
-                }
+                return Expression.NotEqual(expression, Expression.Constant(null, expression.Type));
             }
-            
-            return accessor;
+
+            var expressions = members.Aggregate(new
+                {
+                    Accessor = (Expression) target,
+                    NullChecks = (Expression) Expression.Constant(true)
+                },
+                (acc, member) => new
+                {
+                    Accessor = (Expression) Expression.PropertyOrField(acc.Accessor, member.Name),
+                    NullChecks = (Expression) Expression.AndAlso(acc.NullChecks, NullCheckExpression(acc.Accessor))
+                });
+
+            var finalAccessor = expressions.Accessor;
+            var finalNullChecks = expressions.NullChecks;
+
+            var lastMemberType = members.Last().GetMemberType(false);
+
+            if (lastMemberType.IsEnumOrNullableEnum())
+            {
+                var isNullable = lastMemberType.IsNullableOfT();
+                var enumType = isNullable
+                    ? lastMemberType.GetInnerTypeFromNullable()
+                    : lastMemberType;
+
+                finalAccessor = enumStorage == EnumStorage.AsString
+                    ? Expression.Call(_getEnumStringValue, Expression.Constant(enumType),
+                        Expression.Convert(expressions.Accessor, typeof(object)))
+                    : Expression.Call(_getEnumIntValue, Expression.Convert(expressions.Accessor, typeof(object)));
+
+                lastMemberType = enumStorage == EnumStorage.AsString ? typeof(string) : typeof(int);
+
+                if (isNullable)
+                    finalNullChecks =
+                        Expression.AndAlso(expressions.NullChecks, NullCheckExpression(expressions.Accessor));
+            }
+
+            return Expression.Condition(finalNullChecks, finalAccessor, Expression.Default(lastMemberType));
         }
     }
 }
