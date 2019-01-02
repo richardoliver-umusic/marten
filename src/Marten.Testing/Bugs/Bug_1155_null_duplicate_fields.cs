@@ -20,7 +20,7 @@ namespace Marten.Testing.Bugs
                 session.Store(new Target
                 {
                     Number = 1,
-                    NullableColor = null 
+                    NullableColor = null
                 });
 
                 session.SaveChanges();

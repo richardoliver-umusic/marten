@@ -101,6 +101,12 @@ namespace Marten.Util
         
         public static Expression ToExpression(EnumStorage enumStorage, MemberInfo[] members, ParameterExpression target)
         {
+            // Builds expression to retrieve value including enum conversion and null checks:
+            // Simple property/field                 target => target.Property
+            // Enum conversion to int                target => Convert.ToInt32(target.EnumProperty)
+            // Enum conversion to string             target => Enum.GetName(type, target.EnumProperty)
+            // Nested property/field null checks     target => target.Inner != null ? target.Inner.Property : default()
+
             Expression NullCheck(Expression accessor)
             {
                 return accessor.Type.IsValueType && !accessor.Type.IsNullableOfT()
