@@ -97,50 +97,58 @@ namespace Marten.Util
 
         private static readonly MethodInfo _getEnumStringValue = typeof(Enum).GetMethod(nameof(Enum.GetName), BindingFlags.Static | BindingFlags.Public);
         private static readonly MethodInfo _getEnumIntValue = typeof(Convert).GetMethods(BindingFlags.Static | BindingFlags.Public).Single(mi => mi.Name == nameof(Convert.ToInt32) && mi.GetParameters().Count() == 1 && mi.GetParameters().Single().ParameterType == typeof(object));
-
+        private static readonly Expression _trueConstant = Expression.Constant(true);
+        
         public static Expression ToExpression(EnumStorage enumStorage, MemberInfo[] members, ParameterExpression target)
         {
-            Expression NullCheckExpression(Expression expression)
+            Expression NullCheck(Expression accessor)
             {
-                return Expression.NotEqual(expression, Expression.Constant(null, expression.Type));
+                return accessor.Type.IsValueType && !accessor.Type.IsNullableOfT()
+                    ? _trueConstant
+                    : Expression.NotEqual(accessor, Expression.Constant(null, accessor.Type));
             }
 
-            var expressions = members.Aggregate(new
+            Expression AddToNullChecks(Expression nullChecks, Expression accessor)
+            {
+                var check = NullCheck(accessor);
+                return check == _trueConstant
+                    ? nullChecks
+                    : Expression.AndAlso(nullChecks, check);
+            }
+            
+            Expression ConvertEnumExpression(Type type, Expression accessor)
+            {
+                return enumStorage == EnumStorage.AsString
+                    ? Expression.Call(_getEnumStringValue, Expression.Constant(type),
+                        Expression.Convert(accessor, typeof(object)))
+                    : Expression.Call(_getEnumIntValue,
+                        Expression.Convert(accessor, typeof(object)));
+            }
+
+            // Build accessor and null checks expressions.
+            var aggregatedExpressions = members.Aggregate(new
                 {
                     Accessor = (Expression) target,
-                    NullChecks = (Expression) Expression.Constant(true)
+                    NullChecks = NullCheck(target)
                 },
-                (acc, member) => new
+                (acc, member) =>
                 {
-                    Accessor = (Expression) Expression.PropertyOrField(acc.Accessor, member.Name),
-                    NullChecks = (Expression) Expression.AndAlso(acc.NullChecks, NullCheckExpression(acc.Accessor))
+                    var memberType = member.GetMemberType();
+                    var accessor = (Expression) Expression.PropertyOrField(acc.Accessor, member.Name);
+                    return new
+                    {
+                        Accessor = memberType.IsEnumOrNullableEnum()
+                            ? ConvertEnumExpression(memberType, accessor)
+                            : accessor,
+                        NullChecks = AddToNullChecks(acc.NullChecks, accessor)
+                    };
                 });
 
-            var finalAccessor = expressions.Accessor;
-            var finalNullChecks = expressions.NullChecks;
-
-            var lastMemberType = members.Last().GetMemberType(false);
-
-            if (lastMemberType.IsEnumOrNullableEnum())
-            {
-                var isNullable = lastMemberType.IsNullableOfT();
-                var enumType = isNullable
-                    ? lastMemberType.GetInnerTypeFromNullable()
-                    : lastMemberType;
-
-                finalAccessor = enumStorage == EnumStorage.AsString
-                    ? Expression.Call(_getEnumStringValue, Expression.Constant(enumType),
-                        Expression.Convert(expressions.Accessor, typeof(object)))
-                    : Expression.Call(_getEnumIntValue, Expression.Convert(expressions.Accessor, typeof(object)));
-
-                lastMemberType = enumStorage == EnumStorage.AsString ? typeof(string) : typeof(int);
-
-                if (isNullable)
-                    finalNullChecks =
-                        Expression.AndAlso(expressions.NullChecks, NullCheckExpression(expressions.Accessor));
-            }
-
-            return Expression.Condition(finalNullChecks, finalAccessor, Expression.Default(lastMemberType));
+            // If there are potential nulls add condition. 
+            return aggregatedExpressions.NullChecks == _trueConstant
+                   ? aggregatedExpressions.Accessor
+                   : Expression.Condition(aggregatedExpressions.NullChecks, aggregatedExpressions.Accessor,
+                Expression.Default(aggregatedExpressions.Accessor.Type));
         }
     }
 }
