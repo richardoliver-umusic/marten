@@ -100,37 +100,23 @@ namespace Marten.Util
 
         public static Expression ToExpression(EnumStorage enumStorage, MemberInfo[] members, ParameterExpression target)
         {
-            Expression body = target;
-            foreach (var member in members)
-            {
-                if (member is PropertyInfo)
-                {
-                    var propertyInfo = member.As<PropertyInfo>();
-                    var getMethod = propertyInfo.GetGetMethod();
+            var accessor = members.Aggregate((Expression) target,
+                (acc, member) => Expression.PropertyOrField(acc, member.Name));
 
-                    body = Expression.Call(body, getMethod);
-                }
-                else
-                {
-                    var field = member.As<FieldInfo>();
-                    body = Expression.Field(body, field);
-                }
-            }
-
-            var memberType = members.Last().GetMemberType();
-            if (memberType.GetTypeInfo().IsEnum)
+            var lastMemberType = members.Last().GetMemberType();
+            if (members.Last().GetMemberType().GetTypeInfo().IsEnum)
             {
                 if (enumStorage == EnumStorage.AsString)
                 {
-                    body = Expression.Call(_getEnumStringValue, Expression.Constant(memberType), Expression.Convert(body, typeof(object)));
+                    return Expression.Call(_getEnumStringValue, Expression.Constant(lastMemberType), Expression.Convert(accessor, typeof(object)));
                 }
                 else
                 {
-                    body = Expression.Call(_getEnumIntValue, Expression.Convert(body, typeof(object)));
+                    return Expression.Call(_getEnumIntValue, Expression.Convert(accessor, typeof(object)));
                 }
             }
-
-            return body;
+            
+            return accessor;
         }
     }
 }
