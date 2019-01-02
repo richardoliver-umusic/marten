@@ -87,6 +87,22 @@ namespace Marten.Testing.Util
             getter(target).ShouldBe(target.Inner.Number);
         }
 
+        [Theory]
+        [InlineData(EnumStorage.AsInteger)]
+        [InlineData(EnumStorage.AsString)]
+        public void can_build_getter_for_enum_expression(EnumStorage enumStorage)
+        {
+            Expression<Func<Target, Colors>> expression = t => t.Color;
+            var visitor = new FindMembers();
+            visitor.Visit(expression);
+
+            var members = visitor.Members.ToArray();
+            var getter = LambdaBuilder.Getter<Target, Colors>(enumStorage, members);
+
+            var target = new Target { Inner = new Target { Color = Colors.Blue } };
+            getter(target).ShouldBe(target.Color);
+        }
+
         [Fact]
         public void can_build_getter_for_null_deep_expression()
         {
@@ -102,22 +118,6 @@ namespace Marten.Testing.Util
             var target = Target.Random(false);
 
             getter(target).ShouldBe(default(int));
-        }
-
-        [Theory]
-        [InlineData(EnumStorage.AsInteger)]
-        [InlineData(EnumStorage.AsString)]
-        public void can_build_getter_for_enum_expression(EnumStorage enumStorage)
-        {
-            Expression<Func<Target, Colors>> expression = t => t.Color;
-            var visitor = new FindMembers();
-            visitor.Visit(expression);
-
-            var members = visitor.Members.ToArray();
-            var getter = LambdaBuilder.Getter<Target, Colors>(enumStorage, members);
-
-            var target = new Target { Inner = new Target { Color = Colors.Blue } };
-            getter(target).ShouldBe(target.Color);
         }
 
         [Fact]
