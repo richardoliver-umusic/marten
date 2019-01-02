@@ -104,23 +104,6 @@ namespace Marten.Testing.Util
         }
 
         [Fact]
-        public void can_build_getter_for_null_deep_expression()
-        {
-            Expression<Func<Target, int>> expression = t => t.Inner.Number;
-
-            var visitor = new FindMembers();
-            visitor.Visit(expression);
-
-            var members = visitor.Members.ToArray();
-
-            var getter = LambdaBuilder.Getter<Target, int>(EnumStorage.AsInteger, members);
-
-            var target = Target.Random(false);
-
-            getter(target).ShouldBe(default(int));
-        }
-
-        [Fact]
         public void can_build_getter_for_deep_enum_expression_with_int_enum_storage()
         {
             canBuildGetterForDeepEnumExpression<int>(EnumStorage.AsInteger);
@@ -143,6 +126,23 @@ namespace Marten.Testing.Util
             var target = new Target { Inner = new Target { Color = Colors.Blue } };
 
             getter(target).ShouldBeOfType(typeof(T));
+        }
+
+        [Fact]
+        public void can_build_getter_for_null_deep_expression()
+        {
+            Expression<Func<Target, int>> expression = t => t.Inner.Number;
+
+            var visitor = new FindMembers();
+            visitor.Visit(expression);
+
+            var members = visitor.Members.ToArray();
+
+            var getter = LambdaBuilder.Getter<Target, int>(EnumStorage.AsInteger, members);
+
+            var target = Target.Random(false);
+
+            getter(target).ShouldBe(default(int));
         }
 
         [Fact]
