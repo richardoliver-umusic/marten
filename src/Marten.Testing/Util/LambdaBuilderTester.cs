@@ -146,42 +146,6 @@ namespace Marten.Testing.Util
         }
 
         [Fact]
-        public void can_build_getter_for_nullable_enum_expression_string_storage()
-        {
-            Expression<Func<Target, Colors?>> expression = t => t.NullableColor;
-
-            var visitor = new FindMembers();
-            visitor.Visit(expression);
-
-            var members = visitor.Members.ToArray();
-
-            var getter = LambdaBuilder.Getter<Target, string>(EnumStorage.AsString, members);
-
-            var target = Target.Random(false);
-            target.NullableColor = null;
-
-            getter(target).ShouldBe(null);
-        }
-
-        [Fact]
-        public void can_build_getter_for_nullable_enum_expression_integer_storage()
-        {
-            Expression<Func<Target, Colors?>> expression = t => t.NullableColor;
-
-            var visitor = new FindMembers();
-            visitor.Visit(expression);
-
-            var members = visitor.Members.ToArray();
-
-            var getter = LambdaBuilder.Getter<Target, int>(EnumStorage.AsInteger, members);
-
-            var target = Target.Random(false);
-            target.NullableColor = null;
-
-            getter(target).ShouldBe(default(int));
-        }
-
-        [Fact]
         public void can_get_the_Enum_GetName_method()
         {
             typeof(Enum).GetMethod(nameof(Enum.GetName), BindingFlags.Static | BindingFlags.Public).ShouldNotBeNull();
