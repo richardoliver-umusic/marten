@@ -143,7 +143,7 @@ namespace Marten.Util
                     var accessor = (Expression) Expression.PropertyOrField(acc.Accessor, member.Name);
                     return new
                     {
-                        Accessor = memberType.IsEnumOrNullableEnum()
+                        Accessor = memberType.GetTypeInfo().IsEnum
                             ? ConvertEnumExpression(memberType, accessor)
                             : accessor,
                         NullChecks = AddToNullChecks(acc.NullChecks, accessor)
